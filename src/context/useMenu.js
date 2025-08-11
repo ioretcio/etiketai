@@ -1,3 +1,4 @@
+// src/context/useMenu.js
 import extractFilesLabels from '../utils/extractFilesLabels'
 import useZoom from './useZoom'
 import { useDashboard } from '.'
@@ -7,13 +8,16 @@ const DELTA = 2
 export default function useMenu() {
   const { state, dispatch } = useDashboard()
   const onZoom = useZoom()
+
+  const datasetMode = !!state.datasetId
   const hasFiles = state.files.length > 0
   const hasSelectedBox = state.selectedBox > -1
   const isFirst = state.fileIndex === 0
   const isLast = state.fileIndex === state.files.length - 1
   const hasBoxes = Object.values(state.allBoxes).flat().length > 0
 
-  return [
+  // Базовий набір пунктів
+  const items = [
     {
       label: 'Open',
       icon: '📂',
@@ -23,11 +27,9 @@ export default function useMenu() {
         e.target.files.length > 0 &&
         dispatch({
           type: 'load',
-          data: await extractFilesLabels(
-            [...e.target.files],
-            state.files.length
-          ),
+          data: await extractFilesLabels([...e.target.files], state.files.length),
         }),
+      // у dataset mode приховаємо (див. фільтр нижче)
     },
     {
       label: 'Next',
@@ -49,6 +51,7 @@ export default function useMenu() {
       hotkey: (e) => e.key === 's',
       disabled: !hasFiles || !hasBoxes,
       action: () => dispatch({ type: 'toggle-save-modal' }),
+      // у dataset mode приховаємо (див. фільтр нижче)
     },
     {
       label: 'Duplicate RectBox',
@@ -79,4 +82,9 @@ export default function useMenu() {
       action: () => onZoom(-DELTA),
     },
   ]
+
+  // У dataset mode прибираємо "Open" та "Save"
+  return datasetMode
+    ? items.filter((it) => it.label !== 'Open' && it.label !== 'Save')
+    : items
 }

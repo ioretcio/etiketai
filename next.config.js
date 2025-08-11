@@ -1,7 +1,6 @@
-const withPreact = require('next-plugin-preact')
-
+/** @type {import('next').NextConfig} */
 module.exports = {
-  assetPrefix: '/static/etiketai',
-  basePath: '', // або лишити порожнім, якщо не міняв
-  trailingSlash: true
-}
+  output: 'export',
+  trailingSlash: true,
+  images: { unoptimized: true },
+};

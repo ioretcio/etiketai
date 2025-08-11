@@ -126,11 +126,10 @@ export default function Center() {
 
   if (!file) return (
     <div className={styles.startPoint}>
-      <h1>Etiketai</h1>
+      <h1>ISMC Labelling</h1>
       <img width="100" src="/etiketai-logo.svg" alt="Etiketai logo" />
       <p>v.{packageJSON.version}</p>
       <h2>Click "Open" to start</h2>
-      <p>More info <a rel="noopener noreferrer" href="https://github.com/aralroca/etiketai/blob/master/README.md" target="_blank">on GitHub README</a></p>
     </div>
   )
 
