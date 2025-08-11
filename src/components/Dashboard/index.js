@@ -1,3 +1,4 @@
+// src/components/Dashboard/index.js
 import React, { useEffect, useRef } from 'react'
 import Center from '../Center'
 import Left from '../Left'
@@ -6,7 +7,8 @@ import { DashboardProvider, useDashboard } from '../../context'
 import { listItems, imageURL, loadLabel, saveLabel } from '../../lib/flaskAdapter'
 import styles from './styles.module.css'
 
-function useAutosave(value, onSave, delay = 600) {
+// простий хук-автозбереження із debounce
+function useAutosave(value, onSave, delay = 800) {
   const t = useRef(null)
   useEffect(() => {
     if (t.current) clearTimeout(t.current)
@@ -28,25 +30,42 @@ function Shell() {
   const datasetId = state.datasetId
   const datasetMode = !!datasetId
 
-  // 1) завантаження списку файлів + стартових лейблів
+  // 1) завантаження списку файлів + стартових лейблів коли datasetId з’явився/змінився
   useEffect(() => {
     if (!datasetMode) return
     let alive = true
     ;(async () => {
-      const raws = await listItems(datasetId)
-      const prepared = await Promise.all(raws.map(async it => ({
-        name: it.image_rel.split('/').pop(),
-        remoteUrl: imageURL(datasetId, it.image_rel),
-        labelRel: it.label_rel,
-        labelData: await loadLabel(datasetId, it.label_rel) // null якщо нема
-      })))
-      if (!alive) return
-      dispatch({ type: 'set-remote-files', files: prepared })
+      try {
+        const raws = await listItems(datasetId) // [{image_rel,label_rel,has_label}]
+        const prepared = await Promise.all(
+          raws.map(async it => {
+            let labelData = null
+            if (it.has_label) {
+              try {
+                labelData = await loadLabel(datasetId, it.label_rel)
+              } catch (err) {
+                console.error(`Failed to load label for ${it.label_rel}`, err)
+              }
+            }
+            return {
+              name: it.image_rel.split('/').pop(),
+              remoteUrl: imageURL(datasetId, it.image_rel),
+              labelRel: it.label_rel,
+              labelData
+            }
+          })
+        )
+        if (!alive) return
+        dispatch({ type: 'set-remote-files', files: prepared })
+      } catch (e) {
+        console.error('Failed to load dataset files', e)
+        dispatch({ type: 'set-remote-files', files: [] })
+      }
     })()
     return () => { alive = false }
   }, [datasetMode, datasetId, dispatch])
 
-  // 2) автозбереження активного файлу
+  // 2) автозбереження активного файлу при змінах
   useAutosave(
     { boxes: state.allBoxes[state.fileIndex], names: state.allBoxesNames[state.fileIndex] },
     async ({ boxes, names }) => {
@@ -54,7 +73,7 @@ function Shell() {
       const f = state.files[state.fileIndex]
       if (!f?.labelRel) return
       try {
-        await saveLabel(datasetId, f.labelRel, { boxes, names }) // формат: JSON
+        await saveLabel(datasetId, f.labelRel, { boxes, names })
         dispatch({ type: 'saved' })
       } catch (e) {
         console.error('Autosave failed', e)
